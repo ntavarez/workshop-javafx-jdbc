@@ -1,9 +1,12 @@
 package gui;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 import db.DbException;
+import gui.listeners.DataChangeListener;
 import gui.util.Alerts;
 import gui.util.Constraints;
 import gui.util.Utils;
@@ -17,10 +20,14 @@ import javafx.scene.control.TextField;
 import model.entities.Department;
 import model.services.DepartmentService;
 
-public class DepartmentFormController implements Initializable {
+public class DepartmentFormController implements Initializable { //classe que emite o evento listener (subject)
 
 	private Department entity;
 	private DepartmentService service;
+
+	private List<DataChangeListener> dataChangeListeners = new ArrayList<>(); // injetando variável dependência para se
+																				// comunicar com a interface
+																				// DataChangeListener
 
 	@FXML
 	private TextField txtId;
@@ -37,6 +44,18 @@ public class DepartmentFormController implements Initializable {
 	@FXML
 	private Button btCancel;
 
+	public void setDepartment(Department entity) {
+		this.entity = entity;
+	}
+
+	public void setDepartmentService(DepartmentService service) {
+		this.service = service;
+	}
+
+	public void subscribeDataChangeListener(DataChangeListener listener) {
+		dataChangeListeners.add(listener); // os objetos que implementam a interface estarão na lista
+	}
+
 	@FXML
 	public void onBtSaveAction(ActionEvent event) {
 		if (entity == null) {
@@ -48,9 +67,16 @@ public class DepartmentFormController implements Initializable {
 		try {
 			entity = getFormData(); // pegando os dados e salvando na variável entity
 			service.saveOrUpdate(entity);
-			Utils.currentStage(event).close(); //fechar janela ao salvar cadastro
+			notifyDataChangeListeners();
+			Utils.currentStage(event).close(); // fechar janela ao salvar cadastro
 		} catch (DbException e) {
 			Alerts.showAlert("Error saving object", null, e.getMessage(), AlertType.ERROR);
+		}
+	}
+
+	private void notifyDataChangeListeners() {
+		for (DataChangeListener listener : dataChangeListeners) {
+			listener.onDataChanged(); //percorrendo todos os dados e notificando quando houver alteração
 		}
 	}
 
@@ -66,14 +92,6 @@ public class DepartmentFormController implements Initializable {
 	@FXML
 	public void onBtCancelAction(ActionEvent event) {
 		Utils.currentStage(event).close();
-	}
-
-	public void setDepartment(Department entity) {
-		this.entity = entity;
-	}
-
-	public void setDepartmentService(DepartmentService service) {
-		this.service = service;
 	}
 
 	@Override
